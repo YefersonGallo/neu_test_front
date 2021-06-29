@@ -6,6 +6,9 @@ import Selections from "./components/Selections";
 function App() {
 
     const [value, setValue] = useState('')
+    const [error, setError] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [show, setShow] = useState(false)
     const [text, setText] = useState("")
     const [data, setData] = useState([])
 
@@ -17,6 +20,8 @@ function App() {
     }
 
     const sendRequest = async () => {
+        setLoading(true)
+        setError(false)
         const body = {}
         body[value] = text
         const requestOptions = {
@@ -25,8 +30,19 @@ function App() {
             body: JSON.stringify(body)
         };
         const responseP = await fetch(`http://127.0.0.1:5000/${value}`, requestOptions);
-        const res = await responseP.json();
-        setData(res)
+        const ok = responseP.ok
+        if (ok) {
+            const res = await responseP.json();
+            if (Object.keys(res).length === 0) {
+                setError(true)
+            } else {
+                setData(res)
+            }
+        } else {
+            setError(true)
+        }
+        setShow(true)
+        setLoading(false)
     };
 
     return (
@@ -41,12 +57,13 @@ function App() {
                     <Selections value={value} setValue={setValue}/>
                     <SearchInput onChange={e => setText(e.target.value)} value={text}
                                  placeholder={placeholders[value]}/>
-                    <Button marginRight={16} appearance="primary" disabled={value === ''} onClick={sendRequest}>
+                    <Button marginRight={16} appearance="primary" disabled={value === ''} onClick={sendRequest}
+                            isLoading={loading}>
                         Buscar
                     </Button>
                 </div>
-                <div className="App-body__result" hidden={data.length === 0}>
-                    <Table>
+                <div className="App-body__result" hidden={!show}>
+                    {error ? <h2>No se ha encontrado resultado buscando para {text}</h2> : <Table>
                         <Table.Head>
                             {data.state_0 && <Table.TextHeaderCell>Estado</Table.TextHeaderCell>}
                             <Table.TextHeaderCell>Ciudad</Table.TextHeaderCell>
@@ -64,14 +81,15 @@ function App() {
                                         <Table.TextCell>{location.population}</Table.TextCell>
                                     </Table.Row>)
                                 else {
-                                    nodes.push(<Table.Row key={`location-${index}`} rowSpan={Object.values(location.cities).length}>
+                                    nodes.push(<Table.Row key={`location-${index}`}
+                                                          rowSpan={Object.values(location.cities).length}>
                                         <Table.TextCell>{location.state}</Table.TextCell>
                                         <Table.TextCell>{Object.values(location.cities)[0].name}</Table.TextCell>
                                         <Table.TextCell>{Object.values(location.cities)[0].population}</Table.TextCell>
                                     </Table.Row>)
                                     Object.values(location.cities).slice(1, Object.values(location.cities).length).forEach((city) => {
                                         nodes.push(<Table.Row key={`${city.name}-${index}`}>
-                                            <Table.TextCell />
+                                            <Table.TextCell/>
                                             <Table.TextCell>{city.name}</Table.TextCell>
                                             <Table.TextCell>{city.population}</Table.TextCell>
                                         </Table.Row>)
@@ -80,7 +98,7 @@ function App() {
                                 return nodes
                             })}
                         </Table.Body>
-                    </Table>
+                    </Table>}
                 </div>
             </div>
         </div>
